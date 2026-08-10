@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analogue Metric Clock</title>
+<style>
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+  }
+  .clock-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+  }
+  .clock {
+    position: relative;
+    width: 320px;
+    height: 320px;
+    background: #2a2a2a;
+    border-radius: 50%;
+    border: 12px solid #333;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 0 20px rgba(0,0,0,0.5);
+  }
+  .number {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    text-align: center;
+    line-height: 40px;
+    font-size: 22px;
+    font-weight: bold;
+    color: #aaa;
+  }
+  /* Containers to handle rotation from the exact center */
+  .hand-container {
+    position: absolute;
+    top: 0; 
+    left: 0;
+    width: 100%; 
+    height: 100%;
+  }
+  .hand {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 10px;
+  }
+  .hour-hand {
+    width: 8px;
+    height: 28%;
+    background: #fff;
+  }
+  .minute-hand {
+    width: 5px;
+    height: 38%;
+    background: #999;
+  }
+  .second-hand {
+    width: 2px;
+    height: 45%;
+    background: #e74c3c;
+  }
+  .center-dot {
+    position: absolute;
+    top: 50%; 
+    left: 50%;
+    width: 16px; 
+    height: 16px;
+    background: #e74c3c;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+  }
+  .time-display {
+    font-size: 32px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 3px;
+    font-weight: 300;
+  }
+  .time-label {
+    font-size: 14px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 5px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="clock-wrapper">
+  <div class="clock" id="clock">
+    <!-- Hands -->
+    <div class="hand-container" id="hour-container">
+      <div class="hand hour-hand"></div>
+    </div>
+    <div class="hand-container" id="minute-container">
+      <div class="hand minute-hand"></div>
+    </div>
+    <div class="hand-container" id="second-container">
+      <div class="hand second-hand"></div>
+    </div>
+    <div class="center-dot"></div>
+  </div>
+  
+  <div>
+    <div class="time-display" id="time-display">00:00:00</div>
+    <div class="time-label">Metric Time</div>
+  </div>
+</div>
+
+<script>
+  // 1. Generate numbers 1 to 10 on the clock face
+  const clock = document.getElementById('clock');
+  const clockSize = 320;
+  const center = clockSize / 2;
+  const radius = 125; // Distance from center to numbers
+  const numberOffset = 20; // Half of the .number width/height for centering
+
+  for (let i = 1; i <= 10; i++) {
+    const num = document.createElement('div');
+    num.className = 'number';
+    num.innerText = i;
+
+    // A metric clock has 10 hours, so 36 degrees per hour (360 / 10)
+    // 0 degrees in standard CSS rotate is at the top (12 o'clock normally, 10 o'clock here)
+    const angle = i * 36;
+    const angleRad = (angle - 90) * (Math.PI / 180);
+
+    const x = center + radius * Math.cos(angleRad) - numberOffset;
+    const y = center + radius * Math.sin(angleRad) - numberOffset;
+
+    num.style.left = `${x}px`;
+    num.style.top = `${y}px`;
+    clock.appendChild(num);
+  }
+
+  // 2. Animate the clock based on the current real-world time
+  function updateClock() {
+    const now = new Date();
+    
+    // Calculate total standard seconds elapsed since midnight
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const msSinceMidnight = now.getTime() - midnight.getTime();
+    const secondsSinceMidnight = msSinceMidnight / 1000;
+
+    // Convert to metric seconds
+    // There are 86,400 standard seconds in a day, and 100,000 metric seconds in a day.
+    const metricSecondsTotal = secondsSinceMidnight * (100000 / 86400);
+
+    // Calculate current metric hours, minutes, and seconds
+    const metricHours = Math.floor(metricSecondsTotal / 10000);
+    const metricMinutes = Math.floor((metricSecondsTotal % 10000) / 100);
+    // Keep the decimal remainder on seconds so the second hand sweeps smoothly
+    const metricSeconds = metricSecondsTotal % 100; 
+
+    // Calculate rotation angles
+    // Hour hand: 1 full rotation = 100,000 metric seconds
+    const hourAngle = (metricSecondsTotal / 100000) * 360;
+    
+    // Minute hand: 1 full rotation = 10,000 metric seconds
+    const minuteAngle = ((metricSecondsTotal % 10000) / 10000) * 360;
+    
+    // Second hand: 1 full rotation = 100 metric seconds
+    const secondAngle = (metricSeconds / 100) * 360;
+
+    // Apply rotations
+    document.getElementById('hour-container').style.transform = `rotate(${hourAngle}deg)`;
+    document.getElementById('minute-container').style.transform = `rotate(${minuteAngle}deg)`;
+    document.getElementById('second-container').style.transform = `rotate(${secondAngle}deg)`;
+
+    // Update the digital text display
+    const hDisp = String(metricHours).padStart(2, '0');
+    const mDisp = String(metricMinutes).padStart(2, '0');
+    const sDisp = String(Math.floor(metricSeconds)).padStart(2, '0');
+    document.getElementById('time-display').innerText = `${hDisp}:${mDisp}:${sDisp}`;
+
+    // Loop seamlessly
+    requestAnimationFrame(updateClock);
+  }
+
+  // Start the clock
+  updateClock();
+</script>
+</body>
+</html>
